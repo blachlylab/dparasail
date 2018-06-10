@@ -1,0 +1,11 @@
+{
+	"name": "dparasail",
+	"authors": [
+		"musta"
+	],
+	"description": "A minimal D application.",
+	"license": "proprietary",
+    "targetType": "staticLibrary",
+	"excludedSourceFiles":["source/app.d"],
+	"sourceFile":["./parasail/.libs/libparasail.a"]
+}
