@@ -72,6 +72,7 @@ struct parasail_query{
     char * seq2;
     int seq1Len;
     int seq2Len;
+    //0-based
     int beg_query;
     int beg_ref;
     parasail_result_t* result;
@@ -140,18 +141,25 @@ struct parasail_query{
         for (auto i=0;i<cigar.len; ++i) {
             cigar_string~=CigarOperation(parasail_cigar_decode_len(cigar.seq[i]),parasail_cigar_decode_op(cigar.seq[i]));
         }
+        //if *
         if(cigar_string.is_unavailable){
             return cigar_string;
         }
+        //if 30I8M make 30S8M
         if(cigar_string[0].type=='I'){
+            //move beg_query as well as it is accounted for
             cigar_string[0]=CigarOperation(cigar_string[0].length+this.beg_query,'S');
             this.beg_query=0;
         }
+        //else if 30D8M make 8M and move ref start
         else if(cigar_string[0].type=='D'){
             this.beg_ref=this.beg_ref+cigar_string[0].length;
+            cigar_string=cigar_string[1..$];
             //cigar_string[0]=CigarOperation(cigar_string[0].length+this.beg_query,'S');
         }
+        //else if begin query not 0 add softclip
         else if(this.beg_query!=0){
+            assert(cigar_string[0].type!='S');
             cigar_string=CigarOperation(this.beg_query,'S')~cigar_string;
             this.beg_query=0;
         }
