@@ -1,11 +1,25 @@
 {
 	"name": "dparasail",
 	"authors": [
-		"musta"
+		"Charles Gregory"
 	],
-	"description": "A minimal D application.",
+	"description": "D Bindings for parasail alignment library.",
 	"license": "proprietary",
-    "targetType": "staticLibrary",
-	"excludedSourceFiles":["source/app.d"],
-	"sourceFiles":["./parasail/.libs/libparasail.a"]
+	"sourcePaths":["source","BioD/bio"],
+	"buildRequirements":["allowWarnings"],
+	"sourceFiles":["./parasail/.libs/libparasail.a"],
+	"dependencies":{
+		"undead": "~>1.0.9"
+	},
+	"configurations":[
+		{
+			"name":"app",
+			"targetType": "executable"
+		},
+		{
+			"name":"static",
+			"targetType": "sourceLibrary",
+			"excludedSourceFiles":["source/app.d"]
+		}
+	]
 }
