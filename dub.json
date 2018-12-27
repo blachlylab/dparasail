@@ -7,7 +7,7 @@
 	"license": "proprietary",
 	"sourcePaths":["source","BioD/bio","BioD/contrib"],
 	"buildRequirements":["allowWarnings"],
-	"sourceFiles":["./parasail/.libs/libparasail.a"],
+	"sourceFiles":["./parasail/build/libparasail.a"],
 	"dependencies":{
 		"undead": "~>1.0.9"
 	},
