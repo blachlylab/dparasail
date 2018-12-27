@@ -5,7 +5,7 @@
 	],
 	"description": "D Bindings for parasail alignment library.",
 	"license": "proprietary",
-	"sourcePaths":["source","BioD/bio"],
+	"sourcePaths":["source","BioD/bio","BioD/contrib"],
 	"buildRequirements":["allowWarnings"],
 	"sourceFiles":["./parasail/.libs/libparasail.a"],
 	"dependencies":{

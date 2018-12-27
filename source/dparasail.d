@@ -2,7 +2,7 @@ module dparasail;
 import std.stdio;
 import std.conv;
 import std.utf;
-import bio.bam.cigar;
+import bio.std.hts.bam.cigar;
 import std.algorithm:map,filter;
 import std.algorithm.iteration:sum;
 extern(C):
