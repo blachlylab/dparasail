@@ -6,12 +6,6 @@
 	"description": "D Bindings for parasail alignment library.",
 	"license": "proprietary",
 	"sourceFiles":["./parasail/build/libparasail.a"],
-	"libs":["hts"],
-	"dependencies":{
-		"dhtslib":{
-			"path":"../dhtslib"
-		}
-	},
 	"configurations":[
 		{
 			"name":"app",
