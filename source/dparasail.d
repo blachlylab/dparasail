@@ -2,7 +2,7 @@ module dparasail;
 import std.stdio;
 import std.conv;
 import std.utf;
-import dhtslib.cigar;
+import bio.std.hts.bam.cigar;
 import std.algorithm:map,filter;
 import std.algorithm.iteration:sum;
 extern(C):
@@ -76,47 +76,105 @@ struct parasail_query{
     int beg_query;
     int beg_ref;
     parasail_result_t* result;
-    Cigar get_cigar(parasail_matrix_t* score_matrix){
+    //string get_cigar(parasail_matrix_t* score_matrix){
+    //    parasail_cigar_t* cigar;
+    //    string cigar_string;
+    //    int i=0;
+    //    cigar=parasail_result_get_cigar(result,seq1,seq1Len,seq2,seq2Len,score_matrix);
+    //    beg_query=cigar.beg_query;
+    //    beg_ref=cigar.beg_ref;
+    //    char letter;
+    //    uint length;
+    //    int count=0;
+    //    if(this.beg_query!=0){
+    //        length=this.beg_query;
+    //        letter=parasail_cigar_decode_op(cigar.seq[0]);
+    //        if(letter=='I'){
+    //            length+= parasail_cigar_decode_len(cigar.seq[0]);
+    //            i=1;
+    //        }else if(letter=='*'){
+    //            this.cigar="*";
+    //            return;
+    //        }
+    //        count+=length;
+    //        letter='S';
+    //        cigar_string=cigar_string~to!string(length)~letter;
+    //    }
+    //    for (;i<cigar.len; ++i) {
+    //        letter=parasail_cigar_decode_op(cigar.seq[i]);
+    //        length= parasail_cigar_decode_len(cigar.seq[i]);
+    //        if(i==0 && letter=='I'){
+    //            letter='S';
+    //        }
+    //        if(i==0 && letter=='D'){
+    //            letter='S';
+    //            this.beg_ref+=length;
+    //            continue;
+    //        }
+    //        if(i==(cigar.len-1) && letter=='I'){
+    //            letter='S';
+    //        }
+    //        if(letter!='D'){
+    //            count+=length;
+    //        }
+    //        //if((i==0 && letter=='D')|(i==(cigar.len-1) && letter=='D')){
+    //        //    continue;
+    //        //}
+    //        cigar_string=cigar_string~to!string(length)~letter;
+    //    }
+    //    letter='S';
+    //    length=seq1Len-result.end_query-1;
+    //    if (length>0){
+    //        count+=length;
+    //        cigar_string=cigar_string~to!string(length)~letter;
+    //    }
+    //    assert(count==seq1Len);
+    //    parasail_cigar_free(cigar);
+    //    return cigar_string;
+    //}
+    CigarOperations get_cigar(parasail_matrix_t* score_matrix){
         parasail_cigar_t* cigar;
-        Cigar cigar_string;
+        CigarOperations cigar_string;
         cigar=parasail_result_get_cigar(result,seq1,seq1Len,seq2,seq2Len,score_matrix);
         beg_query=cigar.beg_query;
         beg_ref=cigar.beg_ref;
-        cigar_string=Cigar(cigar.seq,cigar.len);
+        for (auto i=0;i<cigar.len; ++i) {
+            cigar_string~=CigarOperation(parasail_cigar_decode_len(cigar.seq[i]),parasail_cigar_decode_op(cigar.seq[i]));
+        }
         //if *
-        if(cigar_string.is_null){
+        if(cigar_string.is_unavailable){
             return cigar_string;
         }
         //if 30I8M make 30S8M
-        if(cigar_string.ops[0].op==Ops.INS){
+        if(cigar_string[0].type=='I'){
             //move beg_query as well as it is accounted for
-            cigar_string.ops[0]=CigarOp(cigar_string.ops[0].length+this.beg_query,Ops.SOFT_CLIP);
+            cigar_string[0]=CigarOperation(cigar_string[0].length+this.beg_query,'S');
             this.beg_query=0;
         }
         //else if 30D8M make 8M and move ref start
-        else if(cigar_string.ops[0].op==Ops.DEL){
-            this.beg_ref=this.beg_ref+cigar_string.ops[0].length;
-            cigar_string.ops=cigar_string.ops[1..$];
-            //cigar_string[0]=CigarOp(cigar_string[0].length+this.beg_query,Ops.SOFT_CLIP);
+        else if(cigar_string[0].type=='D'){
+            this.beg_ref=this.beg_ref+cigar_string[0].length;
+            cigar_string=cigar_string[1..$];
+            //cigar_string[0]=CigarOperation(cigar_string[0].length+this.beg_query,'S');
         }
         //else if begin query not 0 add softclip
         else if(this.beg_query!=0){
-            assert(cigar_string.ops[0].op!=Ops.SOFT_CLIP);
-            cigar_string.ops=CigarOp(this.beg_query,Ops.SOFT_CLIP)~cigar_string.ops;
+            assert(cigar_string[0].type!='S');
+            cigar_string=CigarOperation(this.beg_query,'S')~cigar_string;
             this.beg_query=0;
         }
         ///////////////////////////////////////////////////////////
-        int q_bases_covered=cast(int) cigar_string.ops.filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
-        if(cigar_string.ops[$-1].op==Ops.INS){
-            cigar_string.ops[$-1]=CigarOp(cigar_string.ops[$-1].length+this.seq1Len-q_bases_covered,Ops.SOFT_CLIP);
-            q_bases_covered=cigar_string.ops.filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
+        int q_bases_covered=cast(int) cigar_string.filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
+        if(cigar_string[$-1].type=='I'){
+            cigar_string[$-1]=CigarOperation(cigar_string[$-1].length+this.seq1Len-q_bases_covered,'S');
+            q_bases_covered=cigar_string.filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
         }
-        else if(cigar_string.ops[$-1].op==Ops.DEL){
-            cigar_string.ops=cigar_string.ops[0..($-1)];
+        else if(cigar_string[$-1].type=='D'){
+            cigar_string=cigar_string[0..($-1)];
         }
         else if(q_bases_covered!=this.seq1Len){
-            cigar_string.ops~=CigarOp(this.seq1Len-q_bases_covered,Ops.SOFT_CLIP);
-            q_bases_covered=cigar_string.ops.filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
+            cigar_string~=CigarOperation(this.seq1Len-q_bases_covered,'S');
+            q_bases_covered=cigar_string.filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
         }
         assert(q_bases_covered==seq1Len);
         parasail_cigar_free(cigar);
@@ -181,7 +239,6 @@ unittest{
     import std.stdio;
     auto p=Parasail("dnafull",3,2);
     auto q=p.sw_striped("GATTA","GACTA");
-    auto cigar =q.get_cigar();
     writeln(q.seq1[0..q.seq1Len]);
     writeln(q.cigar);
     writeln(q.beg_query);
