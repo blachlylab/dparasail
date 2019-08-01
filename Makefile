@@ -5,4 +5,4 @@ parasail/src/cigar.c:
 	git submodule update
 
 parasail/build/libparasail.a: parasail/src/cigar.c
-	cd parasail;mkdir build;cd build;cmake ..;make -j8;
+	cd parasail;mkdir build;cd build;cmake -DBUILD_SHARED_LIBS=OFF ..;make -j8;
