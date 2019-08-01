@@ -11,7 +11,7 @@
 			"path": "../dhtslib"
 		}
 	},
-	"preBuildCommands": ["make"],
+	"preBuildCommands": ["cd $PACKAGE_DIR;make"],
 	"configurations":[
 		{
 			"name":"app",
