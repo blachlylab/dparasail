@@ -76,6 +76,7 @@ struct parasail_query{
     //0-based
     int beg_query;
     int beg_ref;
+    Cigar cigar;
     parasail_result_t* result;
     Cigar get_cigar(parasail_matrix_t* score_matrix){
         parasail_cigar_t* cigar;
@@ -154,7 +155,7 @@ struct Parasail{
         p.seq1Len=s1Len;
         p.seq2Len=s2Len;
         p.result=sw_striped(p);
-        //p.cigar=p.get_cigar(this.score_matrix);
+        p.cigar=p.get_cigar(score_matrix);
         return p;
     }
     parasail_result_t* sw_striped(parasail_query p){
@@ -170,6 +171,7 @@ struct Parasail{
         p.seq1Len=s1Len;
         p.seq2Len=s2Len;
         p.result=nw_scan(p);
+        p.cigar=p.get_cigar(score_matrix);
         return p;
     }
     parasail_result_t* nw_scan(parasail_query p){
