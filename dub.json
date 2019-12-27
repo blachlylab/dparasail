@@ -7,9 +7,7 @@
 	"license": "MIT",
 	"sourceFiles":["./parasail/build/libparasail.a"],
 	"dependencies":{
-		"dhtslib": {
-			"path": "../dhtslib"
-		}
+		"dhtslib": "~>0.10.1"
 	},
 	"preBuildCommands": ["cd $PACKAGE_DIR;make"],
 	"configurations":[
