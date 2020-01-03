@@ -86,7 +86,7 @@ struct parasail_query{
         beg_ref=cigar.beg_ref;
         cigar_string = Cigar(cigar.seq,cigar.len);
         //if *
-        if(cigar_string.is_null){
+        if(cigar_string.ops.length==0){
             return cigar_string;
         }
         //if 30I8M make 30S8M
