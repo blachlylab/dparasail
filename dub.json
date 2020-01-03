@@ -5,18 +5,17 @@
 	],
 	"description": "D Bindings for parasail alignment library.",
 	"license": "MIT",
-	"sourceFiles":["./parasail/build/libparasail.a"],
 	"dependencies":{
 		"dhtslib": "~>0.10.1"
 	},
-	"preBuildCommands": ["cd $PACKAGE_DIR;make"],
+	"libs":["parasail"],
 	"configurations":[
 		{
 			"name":"app",
 			"targetType": "executable"
 		},
 		{
-			"name":"static",
+			"name":"library",
 			"targetType": "sourceLibrary",
 			"excludedSourceFiles":["source/app.d"]
 		}
