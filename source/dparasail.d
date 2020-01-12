@@ -6,62 +6,7 @@ import std.utf;
 import dhtslib.cigar;
 import std.algorithm:map,filter;
 import std.algorithm.iteration:sum;
-extern(C):
-
-//Struct declarations
-struct parasail_result_t {
-    int score;
-    int end_query;
-    int end_ref;
-    int flag;
-    void *extra;
-}
-struct parasail_matrix_t;
-struct parasail_cigar_t{
-    uint *seq;
-    int len;
-    int beg_query;
-    int beg_ref;
-}
-//Matrix functions
-parasail_matrix_t* parasail_matrix_lookup(char * matrix);
-parasail_matrix_t* parasail_matrix_create(
-        const char *alphabet, const int match, const int mismatch);
-void parasail_matrix_free(parasail_matrix_t* matrix);
-
-//SW functions
-
-parasail_result_t* parasail_sw_trace_striped_16(
-        const char * s1,const int s1Len,
-        const char *s2,const int s2Len,
-        const int open,const int gap,
-        const parasail_matrix_t* matrix
-        );
-
-parasail_result_t* parasail_nw_trace_scan_16(
-    const char * s1,const int s1Len,
-    const char *s2,const int s2Len,
-    const int open,const int gap,
-    const parasail_matrix_t* matrix
-    );
-
-void parasail_result_free(parasail_result_t *result);
-
-//Cigar Functions
-void parasail_cigar_free(parasail_cigar_t *cigar);
-char parasail_cigar_decode_op(uint cigar_int);
-uint parasail_cigar_decode_len(uint cigar_int);
-char* parasail_cigar_decode(parasail_cigar_t *cigar);
-parasail_cigar_t* parasail_result_get_cigar(
-        parasail_result_t *result,
-        const char *seqA, int lena,
-        const char *seqB, int lenb,
-        const parasail_matrix_t *matrix);
-
-
-
-//D wrapping
-extern(D):
+public import parasail;
 
 /*
 * As a note nothing about this struct is thread-safe
