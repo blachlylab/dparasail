@@ -1,5 +1,6 @@
 module parasail;
 import std.meta:AliasSeq;
+import std.stdio:FILE;
 
 extern(C):
 
@@ -20,8 +21,8 @@ struct parasail_cigar_t{
 }
 //Matrix functions
 parasail_matrix_t* parasail_matrix_lookup(char * matrix);
-parasail_matrix_t* parasail_matrix_create(
-        const char *alphabet, const int match, const int mismatch);
+parasail_matrix_t* parasail_matrix_create(const char *alphabet, const int match, const int mismatch);
+void parasail_matrix_set_value(parasail_matrix_t *matrix, int row, int col, int value);
 void parasail_matrix_free(parasail_matrix_t* matrix);
 
 
@@ -203,3 +204,33 @@ int parasail_result_is_stats_rowcol(parasail_result_t *result);
 int parasail_result_is_table(parasail_result_t *result);
 int parasail_result_is_rowcol(parasail_result_t *result);
 int parasail_result_is_trace(parasail_result_t *result);
+
+void parasail_traceback_generic(
+        const char *seqA, int lena,
+        const char *seqB, int lenb,
+        const char *nameA,
+        const char *nameB,
+        const parasail_matrix_t *matrix,
+        parasail_result_t *result,
+        char match, /* character to use for a match */
+        char pos,   /* character to use for a positive-value mismatch */
+        char neg,   /* character to use for a negative-value mismatch */
+        int width,  /* width of traceback to display before wrapping */
+        int name_width,
+        int use_stats); /* if 0, don't display stats, if non-zero, summary stats displayed */
+
+void parasail_traceback_generic_extra(
+        const char *seqA, int lena,
+        const char *seqB, int lenb,
+        const char *nameA,
+        const char *nameB,
+        const parasail_matrix_t *matrix,
+        parasail_result_t *result,
+        char match, /* character to use for a match */
+        char pos,   /* character to use for a positive-value mismatch */
+        char neg,   /* character to use for a negative-value mismatch */
+        int width,  /* width of traceback to display before wrapping */
+        int name_width,
+        int use_stats, /* if 0, don't display stats, if non-zero, summary stats displayed */
+        int int_width, /* width used for reference and query indexes */
+        FILE *stream); /* to print to custom file stream */
