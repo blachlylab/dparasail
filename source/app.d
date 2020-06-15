@@ -5,7 +5,7 @@ void main()
 {
 	auto p=Parasail("dnafull",3,2);
 	auto q=p.sw_striped("GATTA","GACTA");
-	q=p.aligner!("sw","striped")("GATTA","GACTA");
+	q=p.aligner!("sw")("GATTA","GACTA");
 	writeln(q.seq1[0..q.seq1Len]);
 	writeln(q.get_cigar(p.score_matrix));
 	writeln(q.beg_query);

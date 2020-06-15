@@ -123,21 +123,21 @@ struct Parasail{
         return parasail_nw_trace_scan_16(p.seq1,p.seq1Len,p.seq2,p.seq2Len,open,gap,score_matrix);
     }
 
-    parasail_query aligner(string alg, string option)(string s1,string s2){
-        return aligner!(alg,option)(toUTFz!(char *)(s1),toUTFz!(char *)(s2),cast(int) s1.length,cast(int) s2.length);
+    parasail_query aligner(string alg, string output_option="trace", string impl_option="striped", string sol_width="16")(string s1,string s2){
+        return aligner!(alg, output_option, impl_option, sol_width)(toUTFz!(char *)(s1),toUTFz!(char *)(s2),cast(int) s1.length,cast(int) s2.length);
     }
-    parasail_query aligner(string alg, string option)(char *s1,char * s2, int s1Len,int s2Len){
+    parasail_query aligner(string alg, string output_option, string impl_option, string sol_width)(char *s1,char * s2, int s1Len,int s2Len){
         parasail_query p;
         p.seq1=s1;
         p.seq2=s2;
         p.seq1Len=s1Len;
         p.seq2Len=s2Len;
-        p.result=aligner!(alg,option)(p);
+        p.result=aligner!(alg, output_option, impl_option, sol_width)(p);
         p.cigar=p.get_cigar(score_matrix);
         return p;
     }
-    parasail_result_t* aligner(string alg, string option)(parasail_query p){
-        mixin("return parasail_"~alg~"_trace_"~option~"_16(p.seq1,p.seq1Len,p.seq2,p.seq2Len,open,gap,score_matrix);");
+    parasail_result_t* aligner(string alg, string output_option, string impl_option, string sol_width)(parasail_query p){
+        mixin("return parasail_"~alg~"_"~output_option~"_"~impl_option~"_"~sol_width~"(p.seq1,p.seq1Len,p.seq2,p.seq2Len,open,gap,score_matrix);");
     }
     
 
