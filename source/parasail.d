@@ -94,7 +94,13 @@ string generateVecFuns(){
         {
             foreach (bit; VEC_BITS)
             {
-                funcs~=FUNC_PRE~aln~type~bit~FUNC_SIG;   
+                funcs~=FUNC_PRE~aln~type~bit~FUNC_SIG;
+                funcs~=FUNC_PRE~aln~OPTIONS[0]~type~bit~FUNC_SIG;
+                funcs~=FUNC_PRE~aln~OPTIONS[1]~type~bit~FUNC_SIG;
+                funcs~=FUNC_PRE~aln~OPTIONS[2]~type~bit~FUNC_SIG;
+
+                funcs~=FUNC_PRE~aln~OPTIONS[0]~OPTIONS[1]~type~bit~FUNC_SIG;
+                funcs~=FUNC_PRE~aln~OPTIONS[0]~OPTIONS[2]~type~bit~FUNC_SIG;   
             }
         }
     }
