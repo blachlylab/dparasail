@@ -29,7 +29,8 @@ struct parasail_query{
         cigar=parasail_result_get_cigar(result,seq1,seq1Len,seq2,seq2Len,score_matrix);
         beg_query=cigar.beg_query;
         beg_ref=cigar.beg_ref;
-        cigar_string = Cigar(cigar.seq,cigar.len);
+        cigar_string = Cigar(((cast(CigarOp*) cigar.seq)[0..cigar.len]).dup);
+        parasail_cigar_free(cigar);
         //if *
         if(cigar_string.ops.length==0){
             return cigar_string;
