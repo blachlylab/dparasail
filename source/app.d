@@ -41,4 +41,8 @@ void main()
 	writeln(q.beg_ref);
 	auto cigar=parasail_result_get_cigar(q.result,q.seq1,q.seq1Len,q.seq2,q.seq2Len,p.score_matrix);
 	writeln(parasail_cigar_decode(cigar));
+	p = Parasail("dnafull","GATTA",3,2);
+	writeln(p.databaseAligner!"nw"("GACTA").result.score);
+	writeln(p.databaseAligner!"nw"("GGCTTCTGATCAGGCTTCT").result.score);
+	writeln(p.databaseAligner!"nw"("GGCTTCTGATCAGGCTTCTGGCTTCTGATCAGGCTTCT").result.score);
 }

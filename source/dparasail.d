@@ -23,7 +23,7 @@ struct parasail_query{
     int beg_ref;
     Cigar cigar;
     parasail_result_t* result;
-    Cigar get_cigar(parasail_matrix_t* score_matrix){
+    Cigar get_cigar(const(parasail_matrix_t)* score_matrix){
         parasail_cigar_t* cigar;
         Cigar cigar_string;
         cigar=parasail_result_get_cigar(result,seq1,seq1Len,seq2,seq2Len,score_matrix);
@@ -77,9 +77,12 @@ struct parasail_query{
     }
 }
 struct Parasail{
-    parasail_matrix_t* score_matrix = null;
+    const(parasail_matrix_t)* score_matrix = null;
     int gap;
     int open;
+    parasail_profile_t * profile;
+    string s1;
+
     @disable this();
     this(string matrix, int open, int gap){
         this.score_matrix=parasail_matrix_lookup(toUTFz!(char *)(matrix));
@@ -91,6 +94,22 @@ struct Parasail{
         this.open=open;
         this.gap=gap;
     }
+
+    this(string matrix, string s1, int open, int gap){
+        this.score_matrix=parasail_matrix_lookup(toUTFz!(char *)(matrix));
+        this.profile = parasail_profile_create_sat(toUTFz!(char *)(s1),cast(int) s1.length,this.score_matrix);
+        this.s1 = s1;
+        this.open=open;
+        this.gap=gap;
+    }
+    this(string alphabet,string s1, int match,int mismatch, int open, int gap){
+        this.score_matrix=parasail_matrix_create(toUTFz!(char *)(alphabet),match,mismatch);
+        this.profile = parasail_profile_create_sat(toUTFz!(char *)(s1),cast(int) s1.length,this.score_matrix);
+        this.s1 = s1;
+        this.open=open;
+        this.gap=gap;
+    }
+    
     parasail_query sw_striped(string s1,string s2){
         return sw_striped(toUTFz!(char *)(s1),toUTFz!(char *)(s2),cast(int) s1.length,cast(int) s2.length);
     }
@@ -124,7 +143,7 @@ struct Parasail{
         return parasail_nw_trace_scan_16(p.seq1,p.seq1Len,p.seq2,p.seq2Len,open,gap,score_matrix);
     }
 
-    parasail_query aligner(string alg, string output_option="trace", string impl_option="striped", string sol_width="16")(string s1,string s2){
+    parasail_query aligner(string alg, string output_option="trace", string impl_option="striped", string sol_width="sat")(string s1,string s2){
         return aligner!(alg, output_option, impl_option, sol_width)(toUTFz!(char *)(s1),toUTFz!(char *)(s2),cast(int) s1.length,cast(int) s2.length);
     }
     parasail_query aligner(string alg, string output_option, string impl_option, string sol_width)(char *s1,char * s2, int s1Len,int s2Len){
@@ -140,10 +159,26 @@ struct Parasail{
     parasail_result_t* aligner(string alg, string output_option, string impl_option, string sol_width)(parasail_query p){
         mixin("return parasail_"~alg~"_"~output_option~"_"~impl_option~"_"~sol_width~"(p.seq1,p.seq1Len,p.seq2,p.seq2Len,open,gap,score_matrix);");
     }
+
+    parasail_query databaseAligner(string alg, string impl_option="striped")(string s2){
+        assert(!(this.profile is null));
+        return databaseAligner!(alg, impl_option)(toUTFz!(char *)(s2),cast(int) s2.length);
+    }
+    parasail_query databaseAligner(string alg, string impl_option)(char * s2,int s2Len){
+        parasail_query p;
+        p.seq2=s2;
+        p.seq2Len=s2Len;
+        p.result=databaseAligner!(alg, impl_option)(p);
+        return p;
+    }
+    parasail_result_t* databaseAligner(string alg, string impl_option)(parasail_query p){
+        mixin("return parasail_"~alg~"_"~impl_option~"_profile_sat(this.profile,p.seq2,p.seq2Len,open,gap);");
+    }
+
     
 
     void close(){
-        parasail_matrix_free(score_matrix);
+        parasail_matrix_free(cast(parasail_matrix *)score_matrix);
     }
 }
 
