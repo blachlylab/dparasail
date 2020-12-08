@@ -45,4 +45,5 @@ void main()
 	writeln(p.databaseAligner!"nw"("GACTA").result.score);
 	writeln(p.databaseAligner!"nw"("GGCTTCTGATCAGGCTTCT").result.score);
 	writeln(p.databaseAligner!"nw"("GGCTTCTGATCAGGCTTCTGGCTTCTGATCAGGCTTCT").result.score);
+	p.close;
 }

@@ -179,6 +179,9 @@ struct Parasail{
 
     void close(){
         parasail_matrix_free(cast(parasail_matrix *)score_matrix);
+        if(!(this.profile is null)){
+            parasail_profile_free(this.profile);
+        }
     }
 }
 
