@@ -53,7 +53,7 @@ struct parasail_query
         else if(this.beg_query!=0){
             assert(cigar_string[0].op!=Ops.SOFT_CLIP);
             cigar_string=Cigar(CigarOp(this.beg_query,Ops.SOFT_CLIP)~cigar_string[]);
-            this.beg_query=cigar_string[0].op;
+            this.beg_query=cigar_string[0].length;
         }
         ///////////////////////////////////////////////////////////
         int q_bases_covered=cast(int) cigar_string[].filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
