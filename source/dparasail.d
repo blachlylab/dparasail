@@ -3,7 +3,7 @@ import std.stdio;
 import std.conv;
 import std.utf;
 // import bio.std.hts.bam.cigar;
-import dhtslib.cigar;
+import dhtslib.sam.cigar;
 import std.algorithm:map,filter;
 import std.algorithm.iteration:sum;
 public import parasail;
@@ -34,39 +34,39 @@ struct parasail_query
         cigar_string = Cigar(((cast(CigarOp*) cigar.seq)[0..cigar.len]).dup);
         parasail_cigar_free(cigar);
         //if *
-        if(cigar_string.ops.length==0){
+        if(cigar_string.length==0){
             return cigar_string;
         }
         //if 30I8M make 30S8M
-        if(cigar_string.ops[0].op==Ops.INS){
+        if(cigar_string[0].op==Ops.INS){
             //move beg_query as well as it is accounted for
-            cigar_string.ops[0]=CigarOp(cigar_string.ops[0].length+this.beg_query,Ops.SOFT_CLIP);
-            this.beg_query+=cigar_string.ops[0].length;
+            cigar_string[0]=CigarOp(cigar_string[0].length+this.beg_query,Ops.SOFT_CLIP);
+            this.beg_query+=cigar_string[0].length;
         }
         //else if 30D8M make 8M and move ref start
-        else if(cigar_string.ops[0].op==Ops.DEL){
-            this.beg_ref=this.beg_ref+cigar_string.ops[0].length;
-            cigar_string=Cigar(cigar_string.ops[1..$]);
+        else if(cigar_string[0].op==Ops.DEL){
+            this.beg_ref=this.beg_ref+cigar_string[0].length;
+            cigar_string=Cigar(cigar_string[1..$]);
             //cigar_string[0]=CigarOperation(cigar_string[0].length+this.beg_query,'S');
         }
         //else if begin query not 0 add softclip
         else if(this.beg_query!=0){
-            assert(cigar_string.ops[0].op!=Ops.SOFT_CLIP);
-            cigar_string=Cigar(CigarOp(this.beg_query,Ops.SOFT_CLIP)~cigar_string.ops);
-            this.beg_query=cigar_string.ops[0].op;
+            assert(cigar_string[0].op!=Ops.SOFT_CLIP);
+            cigar_string=Cigar(CigarOp(this.beg_query,Ops.SOFT_CLIP)~cigar_string[]);
+            this.beg_query=cigar_string[0].op;
         }
         ///////////////////////////////////////////////////////////
-        int q_bases_covered=cast(int) cigar_string.ops.filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
-        if(cigar_string.ops[$-1].op==Ops.INS){
-            cigar_string.ops[$-1]=CigarOp(cigar_string.ops[$-1].length+this.seq1Len-q_bases_covered,Ops.SOFT_CLIP);
-            q_bases_covered=cigar_string.ops.filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
+        int q_bases_covered=cast(int) cigar_string[].filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
+        if(cigar_string[$-1].op==Ops.INS){
+            cigar_string[$-1]=CigarOp(cigar_string[$-1].length+this.seq1Len-q_bases_covered,Ops.SOFT_CLIP);
+            q_bases_covered=cigar_string[].filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
         }
-        else if(cigar_string.ops[$-1].op==Ops.DEL){
-            cigar_string=Cigar(cigar_string.ops[0..($-1)]);
+        else if(cigar_string[$-1].op==Ops.DEL){
+            cigar_string=Cigar(cigar_string[0..($-1)]);
         }
         else if(q_bases_covered!=this.seq1Len){
-            cigar_string=Cigar(cigar_string.ops~CigarOp(this.seq1Len-q_bases_covered,Ops.SOFT_CLIP));
-            q_bases_covered=cigar_string.ops.filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
+            cigar_string=Cigar(cigar_string[]~CigarOp(this.seq1Len-q_bases_covered,Ops.SOFT_CLIP));
+            q_bases_covered=cigar_string[].filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
         }
         assert(q_bases_covered==seq1Len);
         // parasail_cigar_free(cigar);  
