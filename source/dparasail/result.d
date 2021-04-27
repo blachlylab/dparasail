@@ -93,6 +93,20 @@ struct ParasailResult
         return this.queryPos;
     }
 
+    /// starting position of the alignment 
+    /// on the reference/target sequence
+    int endQuery()
+    {
+        return this.result.end_query;
+    }
+
+    /// starting position of the alignment 
+    /// on the query sequence
+    int endRef()
+    {
+        return this.result.end_ref;
+    }
+
     /// alignment score
     int score()
     {
