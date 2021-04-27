@@ -13,7 +13,9 @@ public import parasail;
 * so just don't
 *
 */
-struct parasail_query{
+struct parasail_query
+{
+    Parasail * alnSettings;
     char * seq1;
     char * seq2;
     int seq1Len;
@@ -23,10 +25,10 @@ struct parasail_query{
     int beg_ref;
     Cigar cigar;
     parasail_result_t* result;
-    Cigar get_cigar(const(parasail_matrix_t)* score_matrix){
+    Cigar get_cigar(){
         parasail_cigar_t* cigar;
         Cigar cigar_string;
-        cigar=parasail_result_get_cigar(result,seq1,seq1Len,seq2,seq2Len,score_matrix);
+        cigar=parasail_result_get_cigar(result,seq1,seq1Len,seq2,seq2Len,alnSettings.score_matrix);
         beg_query=cigar.beg_query;
         beg_ref=cigar.beg_ref;
         cigar_string = Cigar(((cast(CigarOp*) cigar.seq)[0..cigar.len]).dup);
@@ -39,7 +41,7 @@ struct parasail_query{
         if(cigar_string.ops[0].op==Ops.INS){
             //move beg_query as well as it is accounted for
             cigar_string.ops[0]=CigarOp(cigar_string.ops[0].length+this.beg_query,Ops.SOFT_CLIP);
-            this.beg_query=0;
+            this.beg_query+=cigar_string.ops[0].length;
         }
         //else if 30D8M make 8M and move ref start
         else if(cigar_string.ops[0].op==Ops.DEL){
@@ -51,7 +53,7 @@ struct parasail_query{
         else if(this.beg_query!=0){
             assert(cigar_string.ops[0].op!=Ops.SOFT_CLIP);
             cigar_string=Cigar(CigarOp(this.beg_query,Ops.SOFT_CLIP)~cigar_string.ops);
-            this.beg_query=0;
+            this.beg_query=cigar_string.ops[0].op;
         }
         ///////////////////////////////////////////////////////////
         int q_bases_covered=cast(int) cigar_string.ops.filter!(x=>x.is_query_consuming()).map!(x=>x.length).sum;
@@ -72,6 +74,15 @@ struct parasail_query{
         // Cigar implicit dtor destroys array ptr which cleans up our problem
         return cigar_string;
     }
+    void writeAlignment(){
+        parasail_traceback_generic(
+            seq1, seq1Len, 
+            seq2, seq2Len, 
+            toUTFz!(char *)("Query:"), toUTFz!(char *)("Target:"), 
+            alnSettings.score_matrix, result, 
+            '|', '*', '*', 60, 7, 1);
+    }
+
     void close(){
         parasail_result_free(result);
     }
@@ -120,7 +131,8 @@ struct Parasail{
         p.seq1Len=s1Len;
         p.seq2Len=s2Len;
         p.result=sw_striped(p);
-        p.cigar=p.get_cigar(score_matrix);
+        p.alnSettings = &this;
+        p.cigar=p.get_cigar;
         return p;
     }
     parasail_result_t* sw_striped(parasail_query p){
@@ -136,7 +148,8 @@ struct Parasail{
         p.seq1Len=s1Len;
         p.seq2Len=s2Len;
         p.result=nw_scan(p);
-        p.cigar=p.get_cigar(score_matrix);
+        p.alnSettings = &this;
+        p.cigar=p.get_cigar;
         return p;
     }
     parasail_result_t* nw_scan(parasail_query p){
@@ -153,7 +166,8 @@ struct Parasail{
         p.seq1Len=s1Len;
         p.seq2Len=s2Len;
         p.result=aligner!(alg, output_option, impl_option, sol_width)(p);
-        p.cigar=p.get_cigar(score_matrix);
+        p.alnSettings = &this;
+        p.cigar=p.get_cigar;
         return p;
     }
     parasail_result_t* aligner(string alg, string output_option, string impl_option, string sol_width)(parasail_query p){
@@ -169,6 +183,7 @@ struct Parasail{
         p.seq2=s2;
         p.seq2Len=s2Len;
         p.result=databaseAligner!(alg, impl_option)(p);
+        p.alnSettings = &this;
         return p;
     }
     parasail_result_t* databaseAligner(string alg, string impl_option)(parasail_query p){
@@ -189,39 +204,59 @@ unittest{
     import std.stdio;
     auto p=Parasail("dnafull",3,2);
     auto q=p.sw_striped("GATTA","GACTA");
-    writeln(q.seq1[0..q.seq1Len]);
-    writeln(q.get_cigar(p.score_matrix).toString());
-    writeln(q.beg_query);
-    writeln(q.beg_ref);
-    assert(q.get_cigar(p.score_matrix).toString()=="2=1X2=");
+    
+    assert(q.beg_query == 0);
+    assert(q.beg_ref == 0);
+    assert(q.result.score == 16);
+    assert(q.cigar.alignedLength == 5);
+    assert(q.cigar.toString=="2=1X2=");
+    q.writeAlignment;
+    
+
     q=p.sw_striped("GGCTTCTGATCAGGCTTCT","GACTA");
-    writeln(q.seq1[0..q.seq1Len]);
-    writeln(q.get_cigar(p.score_matrix).toString());
-    writeln(q.beg_query);
-    writeln(q.beg_ref);
-    assert(q.get_cigar(p.score_matrix).toString()=="7S2=1D1=1I1=7S");
+
+    assert(q.beg_query == 7);
+    assert(q.beg_ref == 0);
+    assert(q.result.score == 14);
+    assert(q.cigar.alignedLength == 5);
+    assert(q.cigar.toString=="7S2=1D1=1I1=7S");
+    q.writeAlignment;
+
     q=p.sw_striped("GACTAA","GGCTTCTGATCAGGCTTCT");
-    writeln(q.seq1[0..q.seq1Len]);
-    writeln(q.get_cigar(p.score_matrix).toString());
-    writeln(q.beg_query);
-    writeln(q.beg_ref);
+
+    assert(q.beg_query == 0);
+    assert(q.beg_ref == 7);
+    assert(q.result.score == 14);
+    assert(q.cigar.alignedLength == 5);
+    assert(q.cigar.toString == "2=1D1=1I1=1S");
+    q.writeAlignment;
+
     q=p.nw_scan("GATTA","GACTA");
-    writeln(q.seq1[0..q.seq1Len]);
-    writeln(q.get_cigar(p.score_matrix).toString());
-    writeln(q.beg_query);
-    writeln(q.beg_ref);
-    assert(q.get_cigar(p.score_matrix).toString()=="2=1X2=");
+
+    assert(q.beg_query == 0);
+    assert(q.beg_ref == 0);
+    assert(q.result.score == 16);
+    assert(q.cigar.alignedLength == 5);
+    assert(q.cigar.toString=="2=1X2=");
+    q.writeAlignment;
+
     q=p.nw_scan("GGCTTCTGATCAGGCTTCT","GACTA");
-    writeln(q.seq1[0..q.seq1Len]);
-    writeln(q.get_cigar(p.score_matrix).toString());
-    writeln(q.beg_query);
-    writeln(q.beg_ref);
-    assert(q.get_cigar(p.score_matrix).toString()=="1=1X2=4I1=10S");
+
+    assert(q.beg_query == 0);
+    assert(q.beg_ref == 0);
+    assert(q.result.score == -14);
+    assert(q.cigar.alignedLength == 5);
+    assert(q.cigar.toString=="1=1X2=4I1=10S");
+    q.writeAlignment;
+    
+
     q=p.nw_scan("GACTAA","GGCTTCTGATCAGGCTTCT");
-    writeln(q.seq1[0..q.seq1Len]);
-    writeln(q.get_cigar(p.score_matrix).toString());
-    writeln(q.beg_query);
-    writeln(q.beg_ref);
+    assert(q.beg_query == 0);
+    assert(q.beg_ref == 0);
+    assert(q.result.score == -8);
+    assert(q.cigar.alignedLength == 12);
+    assert(q.cigar.toString == "1=1X2=4D1=2D1=");
+    q.writeAlignment;
     // auto cigar=parasail_result_get_cigar(q.result,q.seq1,q.seq1Len,q.seq2,q.seq2Len,q.score_matrix);
     // writeln(parasail_cigar_decode(cigar));
 }
