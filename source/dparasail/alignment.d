@@ -2,6 +2,7 @@ module dparasail.alignment;
 import dparasail.result;
 import parasail;
 import std.utf;
+import std.exception : enforce; 
 
 
 /*
@@ -10,159 +11,168 @@ import std.utf;
 */
 struct Parasail
 {
-    const(parasail_matrix_t)* score_matrix = null;
-    int gap;
-    int open;
-    parasail_profile_t* profile;
-    string s1;
+    /// alignment scoring matrix reference
+    private const(parasail_matrix_t)* score_matrix = null;
 
+    /// using a prebuilt parasail matrix?
+    private bool prebuiltMatrix;
+
+    /// using database query?
+    private bool databaseQuery;
+
+    /// gap open penalty (must be positive)
+    private int gapOpen;
+    
+    /// gap extension penalty (must be positive)
+    private int gapExt;
+
+    /// parasail profile reference if doing
+    /// if doing database alignment
+    private parasail_profile_t* profile;
+
+    /// query sequence if doing database alignment
+    private string s1;
+
+    private int refct = 1;
+
+    invariant(){
+        assert(this.refct >=0);
+    }
+
+    /// need to use a constructor
     @disable this();
-    this(string matrix, int open, int gap)
+
+    /// use a prebuilt parasail scoring matrix
+    /// and a gap and ext penalty
+    this(string matrix, int open, int ext)
     {
-        this.score_matrix = parasail_matrix_lookup(toUTFz!(char*)(matrix));
-        this.open = open;
-        this.gap = gap;
+        auto m = parasail_matrix_lookup(toUTFz!(char*)(matrix));
+        this.prebuiltMatrix = true;
+        this(m, open, ext);
     }
 
-    this(string alphabet, int match, int mismatch, int open, int gap)
+    /// build your own parasail scoring matrix
+    /// specify an alphabet (GATCN), specify a match
+    /// score and mismatch penalty (must be a negative number),
+    /// and a gap and ext penalty
+    this(string alphabet, int match, int mismatch, int open, int ext)
     {
-        this.score_matrix = parasail_matrix_create(toUTFz!(char*)(alphabet), match, mismatch);
-        this.open = open;
-        this.gap = gap;
+        enforce(match > 0, "match score must be > 0");
+        enforce(mismatch < 0, "mismatch penalty/score must be < 0");
+        auto m = parasail_matrix_create(toUTFz!(char*)(alphabet), match, mismatch);
+        this(m, open, ext);
     }
 
-    this(string matrix, string s1, int open, int gap)
+    /// use a single query sequence to database alignment
+    /// against many other sequences
+    /// also
+    /// use a prebuilt parasail scoring matrix
+    /// and a gap and ext penalty
+    this(string matrix, string s1, int open, int ext)
     {
-        this.score_matrix = parasail_matrix_lookup(toUTFz!(char*)(matrix));
+        this.s1 = s1;
+        this.databaseQuery = true;
+        this.prebuiltMatrix = true;
+        auto m = parasail_matrix_lookup(toUTFz!(char*)(matrix));
+        this.profile = parasail_profile_create_sat(toUTFz!(char*)(s1),
+                cast(int) s1.length, m);
+        this(m, open, ext);
+    }
+
+    /// use a single query sequence to database alignment
+    /// against many other sequences
+    /// also
+    /// build your own parasail scoring matrix
+    /// specify an alphabet (GATCN), specify a match
+    /// score and mismatch penalty (must be a negative number),
+    /// and a gap and ext penalty
+    this(string alphabet, string s1, int match, int mismatch, int open, int ext)
+    {
+        this.s1 = s1;
+        this.databaseQuery = true;
+        auto m = parasail_matrix_create(toUTFz!(char*)(alphabet), match, mismatch);
         this.profile = parasail_profile_create_sat(toUTFz!(char*)(s1),
                 cast(int) s1.length, this.score_matrix);
-        this.s1 = s1;
-        this.open = open;
-        this.gap = gap;
+        this(m, open, ext);
     }
 
-    this(string alphabet, string s1, int match, int mismatch, int open, int gap)
+    /// use a parasail_matrix_t directly
+    /// and a gap and ext penalty
+    /// not recommended, for internal use
+    this(const(parasail_matrix_t) * matrix, int open, int ext)
     {
-        this.score_matrix = parasail_matrix_create(toUTFz!(char*)(alphabet), match, mismatch);
-        this.profile = parasail_profile_create_sat(toUTFz!(char*)(s1),
-                cast(int) s1.length, this.score_matrix);
-        this.s1 = s1;
-        this.open = open;
-        this.gap = gap;
+        this.score_matrix = matrix;
+        enforce(open > 0, "gap open penalty must be greater than 0");
+        enforce(ext > 0, "gap extension penalty must be greater than 0");
+        this.gapOpen = open;
+        this.gapExt = ext;
+    }
+
+    this(this){
+        this.refct++;
     }
 
     ~this()
     {
-        this.close;
+        if(--refct == 0)
+            this.close;
+    }
+
+    const(parasail_matrix_t) * scoreMatrix(){
+        return this.score_matrix;
     }
 
     ParasailResult sw_striped(string s1, string s2)
     {
-        return sw_striped(toUTFz!(char*)(s1), toUTFz!(char*)(s2),
-                cast(int) s1.length, cast(int) s2.length);
-    }
-
-    ParasailResult sw_striped(char* s1, char* s2, int s1Len, int s2Len)
-    {
-        ParasailResult p;
-        p.seq1 = s1;
-        p.seq2 = s2;
-        p.seq1Len = s1Len;
-        p.seq2Len = s2Len;
-        p.result = sw_striped(p);
-        p.alnSettings = &this;
-        p.cigar = p.get_cigar;
-        return p;
-    }
-
-    parasail_result_t* sw_striped(ParasailResult p)
-    {
-        return parasail_sw_trace_striped_16(p.seq1, p.seq1Len, p.seq2,
-                p.seq2Len, open, gap, score_matrix);
+        auto seq1 = toUTFz!(const char*)(s1);
+        auto seq2 = toUTFz!(const char*)(s2);
+        auto seq1Len = cast(const int) s1.length;
+        auto seq2Len = cast(const int) s2.length;
+        auto res = parasail_sw_trace_striped_16(seq1, seq1Len, seq2,
+                seq2Len, this.gapOpen, this.gapExt, this.score_matrix);
+        return ParasailResult(&this, res, s1, s2);
     }
 
     ParasailResult nw_scan(string s1, string s2)
     {
-        return nw_scan(toUTFz!(char*)(s1), toUTFz!(char*)(s2),
-                cast(int) s1.length, cast(int) s2.length);
+        auto seq1 = toUTFz!(const char*)(s1);
+        auto seq2 = toUTFz!(const char*)(s2);
+        auto seq1Len = cast(const int) s1.length;
+        auto seq2Len = cast(const int) s2.length;
+        auto res = parasail_nw_trace_scan_16(seq1, seq1Len, seq2,
+                seq2Len, this.gapOpen, this.gapExt, this.score_matrix);
+        return ParasailResult(&this, res, s1, s2);
     }
 
-    ParasailResult nw_scan(char* s1, char* s2, int s1Len, int s2Len)
-    {
-        ParasailResult p;
-        p.seq1 = s1;
-        p.seq2 = s2;
-        p.seq1Len = s1Len;
-        p.seq2Len = s2Len;
-        p.result = nw_scan(p);
-        p.alnSettings = &this;
-        p.cigar = p.get_cigar;
-        return p;
-    }
-
-    parasail_result_t* nw_scan(ParasailResult p)
-    {
-        return parasail_nw_trace_scan_16(p.seq1, p.seq1Len, p.seq2, p.seq2Len,
-                open, gap, score_matrix);
-    }
 
     ParasailResult aligner(string alg, string output_option = "trace",
             string impl_option = "striped", string sol_width = "sat")(string s1, string s2)
     {
-        return aligner!(alg, output_option, impl_option, sol_width)(toUTFz!(char*)(s1),
-                toUTFz!(char*)(s2), cast(int) s1.length, cast(int) s2.length);
-    }
-
-    ParasailResult aligner(string alg, string output_option, string impl_option, string sol_width)(
-            char* s1, char* s2, int s1Len, int s2Len)
-    {
-        ParasailResult p;
-        p.seq1 = s1;
-        p.seq2 = s2;
-        p.seq1Len = s1Len;
-        p.seq2Len = s2Len;
-        p.result = aligner!(alg, output_option, impl_option, sol_width)(p);
-        p.alnSettings = &this;
-        p.cigar = p.get_cigar;
-        return p;
-    }
-
-    parasail_result_t* aligner(string alg, string output_option,
-            string impl_option, string sol_width)(ParasailResult p)
-    {
-        mixin("return parasail_" ~ alg ~ "_" ~ output_option ~ "_" ~ impl_option ~ "_"
-                ~ sol_width ~ "(p.seq1,p.seq1Len,p.seq2,p.seq2Len,open,gap,score_matrix);");
+         auto seq1 = toUTFz!(const char*)(s1);
+        auto seq2 = toUTFz!(const char*)(s2);
+        auto seq1Len = cast(const int) s1.length;
+        auto seq2Len = cast(const int) s2.length;
+        mixin("auto res = parasail_" ~ alg ~ "_" ~ output_option ~ "_" ~ impl_option ~ "_"
+                ~ sol_width ~ "(seq1, seq1Len, seq2, seq2Len, this.gapOpen, this.gapExt, this.score_matrix);");
+        return ParasailResult(&this, res, s1, s2);
     }
 
     ParasailResult databaseAligner(string alg, string impl_option = "striped")(string s2)
     {
+        auto seq2 = toUTFz!(const char*)(s2);
+        auto seq2Len = cast(const int) s2.length;
         assert(!(this.profile is null));
-        return databaseAligner!(alg, impl_option)(toUTFz!(char*)(s2), cast(int) s2.length);
-    }
-
-    ParasailResult databaseAligner(string alg, string impl_option)(char* s2, int s2Len)
-    {
-        ParasailResult p;
-        p.seq2 = s2;
-        p.seq2Len = s2Len;
-        p.result = databaseAligner!(alg, impl_option)(p);
-        p.alnSettings = &this;
-        return p;
-    }
-
-    parasail_result_t* databaseAligner(string alg, string impl_option)(ParasailResult p)
-    {
-        mixin(
-                "return parasail_" ~ alg ~ "_" ~ impl_option
-                ~ "_profile_sat(this.profile,p.seq2,p.seq2Len,open,gap);");
+        mixin("auto res = parasail_" ~ alg ~ "_" ~ impl_option
+                ~ "_profile_sat(this.profile, seq2, seq2Len, gapOpen, gapExt);");
+        return ParasailResult(&this, res, this.s1, s2);
     }
 
     void close()
     {
-        parasail_matrix_free(cast(parasail_matrix*) score_matrix);
+        if(!prebuiltMatrix)
+            parasail_matrix_free(cast(parasail_matrix*) score_matrix);
+
         if (!(this.profile is null))
-        {
             parasail_profile_free(this.profile);
-        }
     }
 }
