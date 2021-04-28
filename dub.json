@@ -6,7 +6,7 @@
 	"description": "D Bindings for parasail alignment library.",
 	"license": "MIT",
 	"dependencies":{
-		"dhtslib": "~>0.12.0+htslib-1.10"
+		"dhtslib": "~>0.12.3+htslib-1.10"
 	},
 	"libs":["parasail"],
 	"configurations":[
