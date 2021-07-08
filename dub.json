@@ -8,7 +8,7 @@
 	"dependencies":{
 		"dhtslib": "~>0.12.3+htslib-1.10"
 	},
-	"libs":["parasail"],
+	"libs":["parasail", "hts"],
 	"configurations":[
 		{
 			"name":"app",
@@ -16,7 +16,7 @@
 		},
 		{
 			"name":"library",
-			"targetType": "sourceLibrary",
+			"targetType": "library",
 			"excludedSourceFiles":["source/app.d"]
 		}
 	]
