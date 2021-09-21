@@ -10,9 +10,10 @@ import std.algorithm : map, filter;
 import std.algorithm.iteration : sum;
 import std.array : array;
 import dparasail.alignment;
+import dparasail.memory;
 import parasail;
 
-/*
+/**
 * Stores alignment results (scores, cigar, alignment starts).
 * Contains pointers to underlying parasail data. Owns parasail_result_t.
 */
@@ -30,18 +31,12 @@ struct ParasailResult
     private int refPos;
     private Cigar p_cigar;
     private bool hasCigar;
-    private parasail_result_t* result;
+    private ParasailResultPtr result;
 
     private int num_gaps;
     private int num_mis;
     private int num_matches;
     private int total_length;
-
-    private int refct = 1;
-
-    invariant(){
-        assert(this.refct >=0);
-    }
 
     /// need to use a constructor
     @disable this();
@@ -49,10 +44,10 @@ struct ParasailResult
     /// ctor for strings
     this(Parasail * alnSettings, parasail_result_t * result, string s1, string s2)
     {
+        this.result = ParasailResultPtr(result);
         this.alnSettings = alnSettings;
         this.s1 = s1;
         this.s2 = s2;
-        this.result = result;
         auto seq1 = toUTFz!(const char*)(s1);
         auto seq2 = toUTFz!(const char*)(s2);
         auto seq1Len = cast(const int) s1.length;
@@ -67,16 +62,6 @@ struct ParasailResult
             this.hasCigar = true; 
             this.p_cigar = this.get_cigar();  
         }
-    }
-
-    this(this){
-        this.refct++;
-    }
-
-    ~this()
-    {
-        if(--refct == 0)
-            this.close;
     }
 
     /// starting position of the alignment 
