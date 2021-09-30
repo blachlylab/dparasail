@@ -6,7 +6,6 @@ import std.typecons : RefCounted, RefCountedAutoInitialize;
 import std.traits : Unqual;
 import parasail;
 import core.stdc.stdlib : calloc, free;
-import htslib.hts_log;
 
 /// can we use @live for scope checking? 
 enum dip1000Enabled = isSafe!((int x) => *&x);

@@ -5,9 +5,9 @@ import core.stdc.stdlib : exit;
 
 import dparasail.result;
 import dparasail.memory;
+import dparasail.log;
 import parasail;
 
-import htslib.hts_log;
 
 /*
 * Acts as a profile of settings for reusing 
@@ -55,13 +55,13 @@ struct Parasail
             auto mCopy = parasail_matrix_copy(m);
             this(mCopy, open, ext);
         }else{
-            hts_log_warning(__FUNCTION__, "Couldn't load matrix named " ~matrix ~", assuming alphabet");
+            logWarning(__FUNCTION__, "Couldn't load matrix named " ~matrix ~", assuming alphabet");
             if(m == null && (match == -1 || mismatch == 1)){
-                hts_log_error(__FUNCTION__, "Couldn't load matrix and match and mismatch penalties are unset (-1, 1)");
+                logError(__FUNCTION__, "Couldn't load matrix and match and mismatch penalties are unset (-1, 1)");
                 exit(-1);
             }
             auto alphabet = matrix;
-            hts_log_warning(__FUNCTION__, "Attempting to create matrix from alphabet " ~alphabet);
+            logWarning(__FUNCTION__, "Attempting to create matrix from alphabet " ~alphabet);
 
             assert(match > 0, "match score must be > 0");
             assert(mismatch < 0, "mismatch penalty/score must be < 0");
@@ -69,7 +69,7 @@ struct Parasail
             auto mCreate = parasail_matrix_create(toUTFz!(char*)(alphabet), match, mismatch);
             if(mCreate == null)
             {
-                hts_log_error(__FUNCTION__, "Couldn't create matrix from alphabet " ~alphabet);
+                logError(__FUNCTION__, "Couldn't create matrix from alphabet " ~alphabet);
                 exit(-1);
             }
             this(mCreate, databaseSequence, open, ext);
@@ -87,7 +87,7 @@ struct Parasail
             auto prof = parasail_profile_create_sat(toUTFz!(char*)(s1), cast(int) s1.length, matrix);
             if(prof == null)
             {
-                hts_log_error(__FUNCTION__, "Couldn't create database profile from " ~databaseSequence);
+                logError(__FUNCTION__, "Couldn't create database profile from " ~databaseSequence);
             }
             this.profile = ParasailProfile(prof);
         }
@@ -116,7 +116,7 @@ struct Parasail
     ParasailResult sw_striped(string s1, string s2)
     {
         if(!(this.profile is null))
-            hts_log_warning(__FUNCTION__, "You are using sw align but a database profile is set");
+            logWarning(__FUNCTION__, "You are using sw align but a database profile is set");
 
         auto seq1 = toUTFz!(const char*)(s1);
         auto seq2 = toUTFz!(const char*)(s2);
@@ -130,7 +130,7 @@ struct Parasail
     ParasailResult nw_scan(string s1, string s2)
     {
         if(!(this.profile is null))
-            hts_log_warning(__FUNCTION__, "You are using nw align but a database profile is set");
+            logWarning(__FUNCTION__, "You are using nw align but a database profile is set");
 
         auto seq1 = toUTFz!(const char*)(s1);
         auto seq2 = toUTFz!(const char*)(s2);
@@ -146,7 +146,7 @@ struct Parasail
             string impl_option = "striped", string sol_width = "sat")(string s1, string s2)
     {
         if(!(this.profile is null))
-            hts_log_warning(__FUNCTION__, "You are using aligner but a database profile is set");
+            logWarning(__FUNCTION__, "You are using aligner but a database profile is set");
 
         auto seq1 = toUTFz!(const char*)(s1);
         auto seq2 = toUTFz!(const char*)(s2);
@@ -162,7 +162,7 @@ struct Parasail
         auto seq2 = toUTFz!(const char*)(s2);
         auto seq2Len = cast(const int) s2.length;
         if(this.profile is null){
-            hts_log_error(__FUNCTION__, "Cannot use databaseAligner when profile is not set");
+            logError(__FUNCTION__, "Cannot use databaseAligner when profile is not set");
             exit(-1);
         }
         mixin("auto res = parasail_" ~ alg ~ "_" ~ impl_option
