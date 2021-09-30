@@ -1,6 +1,7 @@
 module dparasail.memory;
 
 import std.traits : isPointer, isSomeFunction, ReturnType, isSafe;
+import std.string : strip;
 import core.lifetime : move;
 import std.typecons : RefCounted, RefCountedAutoInitialize;
 import std.traits : Unqual;
@@ -17,7 +18,7 @@ static if(dip1000Enabled)
 /// counting on htslib pointers and destroys with specified function
 template ParasailMemory(T)
 {
-    enum freeMix = T.stringof ~ "_free";
+    enum freeMix = strip(T.stringof,"_") ~ "_free";
     mixin("alias destroy = "~freeMix~";");
     static assert(isSomeFunction!destroy && is(ReturnType!destroy == void));
     
