@@ -11,13 +11,13 @@
 	"libs":["parasail", "hts"],
 	"configurations":[
 		{
-			"name":"app",
-			"targetType": "executable"
-		},
-		{
 			"name":"library",
-			"targetType": "library",
-			"excludedSourceFiles":["source/app.d"]
-		}
+			"targetType": "library"
+		},
+        {
+            "name": "unittest-safety",
+            "libs": ["parasail","hts"],
+            "dflags": ["-dip1000"]
+        }
 	]
 }

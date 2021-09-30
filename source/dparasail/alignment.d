@@ -83,6 +83,7 @@ struct Parasail
     {
         if(databaseSequence != "")
         {
+            this.s1 = databaseSequence;
             auto prof = parasail_profile_create_sat(toUTFz!(char*)(s1), cast(int) s1.length, matrix);
             if(prof == null)
             {
@@ -97,7 +98,7 @@ struct Parasail
     /// and a gap and ext penalty
     this(parasail_matrix_t * matrix, int open, int ext)
     {
-        this.profile.rcPtr.refCountedStore.ensureInitialized;
+        this.profile = ParasailProfile(cast(parasail_profile_t *) null);
         this.score_matrix = ParasailMatrix(matrix);
         assert(open > 0, "gap open penalty must be greater than 0");
         assert(ext > 0, "gap extension penalty must be greater than 0");

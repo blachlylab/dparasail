@@ -1,11 +1,18 @@
 module dparasail.memory;
 
-import std.traits : isPointer, isSomeFunction, ReturnType;
+import std.traits : isPointer, isSomeFunction, ReturnType, isSafe;
 import core.lifetime : move;
 import std.typecons : RefCounted, RefCountedAutoInitialize;
 import std.traits : Unqual;
 import parasail;
+import core.stdc.stdlib : calloc, free;
 import htslib.hts_log;
+
+/// can we use @live for scope checking? 
+enum dip1000Enabled = isSafe!((int x) => *&x);
+
+static if(dip1000Enabled)
+    pragma(msg, "Using -dip1000 for scope checking and safety");
 
 /// Template struct that performs reference
 /// counting on htslib pointers and destroys with specified function
@@ -14,57 +21,71 @@ template ParasailMemory(T)
     enum freeMix = T.stringof ~ "_free";
     mixin("alias destroy = "~freeMix~";");
     static assert(isSomeFunction!destroy && is(ReturnType!destroy == void));
-    struct ParasailMemoryImpl(T)
+    
+    struct SafeParasailPtr(T)
     if(!isPointer!T)
     {
-        @safe:
-        /// Pointer Wrapper
-        static struct ParasailPtr
+        @safe @nogc nothrow:
+
+        /// data pointer
+        T * ptr;
+        /// reference counting
+        int* refct;
+        /// initialized?
+        bool initialized;
+
+        /// ctor that respects scope
+        this(T * rawPtr) @trusted return scope
         {
-            /// data pointer
-            T * ptr;
-
-            /// no copying this as that could result
-            /// in premature destruction
-            @disable this(this);
-
-            /// destroy 
-            ~this() @trusted
-            {
-                /// if destroy function return is void 
-                /// just destroy
-                /// else if int
-                /// destroy then check return value 
-                /// else don't compile
-                if(this.ptr){
-                    destroy(this.ptr);
-                }
-            }
+            this.ptr = rawPtr;
+            this.refct = cast(int *) calloc(int.sizeof,1);
+            (*this.refct) = 1;
+            this.initialized = true;
+        }
+        
+        /// postblit that respects scope
+        this(this) @trusted return scope
+        {
+            if(initialized)(*this.refct)++;
         }
 
-        /// reference counted HtslibPtr
-        RefCounted!(ParasailPtr, RefCountedAutoInitialize.yes) rcPtr;
+        /// allow SafeHtslibPtr to be used as 
+        /// underlying ptr type
+        alias getRef this;
 
         /// get underlying data pointer
         @property nothrow pure @nogc
-        ref inout(T*) getPtr() inout return
+        ref inout(T*) getRef() inout return
         {
-            return rcPtr.refCountedPayload.ptr;
+            return ptr;
         }
 
-        /// allow ParasailMemory to be used as 
-        /// underlying ptr type
-        alias getPtr this;
-
-        /// ctor from raw pointer
-        this(T * rawPtr) @trusted
+        /// take ownership of underlying data pointer
+        @property nothrow pure @nogc
+        T* moveRef()
         {
-            auto wrapped = ParasailPtr(rawPtr);
-            move(wrapped,this.rcPtr.refCountedPayload);
+            T * ptr;
+            move(this.getRef, ptr);
+            return ptr;
+        }
+        ~this() @trusted return scope
+        {
+            /// if destroy function return is void 
+            /// just destroy
+            /// else if int
+            /// destroy then check return value 
+            /// else don't compile
+            if(!this.initialized) return;
+            if(--(*this.refct)) return;
+            if(this.ptr){
+                free(this.refct);
+                destroy(this.ptr);
+            }
         }
     }
-    alias ParasailMemory = ParasailMemoryImpl!T;
+    alias ParasailMemory = SafeParasailPtr!T;
 }
+
 /// reference counted bam1_t wrapper
 /// can be used directly as a bam1_t *
 alias ParasailMatrix = ParasailMemory!(parasail_matrix_t);

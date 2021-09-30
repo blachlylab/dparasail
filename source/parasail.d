@@ -13,7 +13,7 @@ module parasail;
  */
 
 import core.stdc.stdio;
-
+@system @nogc nothrow:
 extern (C):
 
 /* Version macros for compile-time API version detection */
