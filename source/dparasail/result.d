@@ -5,7 +5,7 @@ import std.conv;
 import std.utf;
 
 // import bio.std.hts.bam.cigar;
-import dhtslib.sam.cigar;
+import dparasail.cigar;
 import std.algorithm : map, filter;
 import std.algorithm.iteration : sum;
 import std.array : array;
