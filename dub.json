@@ -6,17 +6,17 @@
 	"description": "D Bindings for parasail alignment library.",
 	"license": "MIT",
 	"dependencies":{
-		"dhtslib": "~>0.12.3+htslib-1.10"
 	},
-	"libs":["parasail", "hts"],
+	"libs":["parasail"],
 	"configurations":[
 		{
 			"name":"library",
+			"libs": ["parasail"],
 			"targetType": "library"
 		},
         {
             "name": "unittest-safety",
-            "libs": ["parasail","hts"],
+            "libs": ["parasail"],
             "dflags": ["-dip1000"]
         }
 	]
