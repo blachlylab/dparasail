@@ -91,7 +91,11 @@ struct Parasail
             }
             this.profile = ParasailProfile(prof);
         }
-        this(matrix, open, ext);
+        this.score_matrix = ParasailMatrix(matrix);
+        assert(open > 0, "gap open penalty must be greater than 0");
+        assert(ext > 0, "gap extension penalty must be greater than 0");
+        this.gapOpen = open;
+        this.gapExt = ext;
     }
 
     /// use a parasail_matrix_t directly
