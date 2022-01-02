@@ -110,6 +110,15 @@ struct Parasail
         this.gapExt = ext;
     }
 
+    this(this){
+        this.score_matrix = score_matrix;
+        this.databaseQuery = databaseQuery;
+        this.gapOpen = gapOpen;
+        this.gapExt = gapExt;
+        this.profile = profile;
+        this.s1 = s1;
+    }
+
     /// get scoring matrix
     auto scoreMatrix()
     {
