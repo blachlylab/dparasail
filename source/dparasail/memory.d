@@ -5,6 +5,7 @@ import std.string : strip;
 import core.lifetime : move;
 import std.typecons : RefCounted, RefCountedAutoInitialize;
 import std.traits : Unqual;
+import core.atomic : atomicOp;
 import parasail;
 import core.stdc.stdlib : calloc, free;
 
@@ -19,8 +20,8 @@ static if(dip1000Enabled)
 template ParasailMemory(T)
 {
     enum freeMix = strip(T.stringof,"_") ~ "_free";
-    mixin("alias destroy = "~freeMix~";");
-    static assert(isSomeFunction!destroy && is(ReturnType!destroy == void));
+    mixin("alias destroyFun = "~freeMix~";");
+    static assert(isSomeFunction!destroyFun && is(ReturnType!destroyFun == void));
     
     struct SafeParasailPtr(T)
     if(!isPointer!T)
@@ -30,7 +31,7 @@ template ParasailMemory(T)
         /// data pointer
         T * ptr;
         /// reference counting
-        int* refct;
+        shared int* refct;
         /// initialized?
         bool initialized;
 
@@ -38,7 +39,7 @@ template ParasailMemory(T)
         this(T * rawPtr) @trusted return scope
         {
             this.ptr = rawPtr;
-            this.refct = cast(int *) calloc(int.sizeof,1);
+            this.refct = cast(shared int *) calloc(int.sizeof,1);
             (*this.refct) = 1;
             this.initialized = true;
         }
@@ -46,7 +47,7 @@ template ParasailMemory(T)
         /// postblit that respects scope
         this(this) @trusted return scope
         {
-            if(initialized)(*this.refct)++;
+            if(initialized)atomicOp!"+="(*this.refct, 1);
         }
 
         /// allow SafeHtslibPtr to be used as 
@@ -76,10 +77,10 @@ template ParasailMemory(T)
             /// destroy then check return value 
             /// else don't compile
             if(!this.initialized) return;
-            if(--(*this.refct)) return;
+            if(atomicOp!"-="(*this.refct, 1)) return;
             if(this.ptr){
-                free(this.refct);
-                destroy(this.ptr);
+                free(cast(int*)this.refct);
+                destroyFun(this.ptr);
             }
         }
     }
